@@ -35,6 +35,7 @@ Ele funciona como um pequeno "robô de navegação": abre a página inicial, tir
 - **Scroll automático até o final da página** antes do print, para acionar lazy loading de imagens/conteúdo (`--scroll-to-bottom`).
 - **Viewport configurável** (largura/altura) para simular diferentes resoluções.
 - **Modo headless ou visual** (`--no-headless` mostra a janela do navegador).
+- **Sessão autenticada com perfil persistente** (`--login`): abre o navegador para você confirmar ou fazer login manualmente e reaproveita a sessão (cookies, localStorage, IndexedDB) nas próximas execuções, sem precisar logar de novo toda vez.
 - **Delay configurável** entre páginas, para não sobrecarregar o servidor de destino.
 - **Nomes de arquivo seguros**, derivados automaticamente da URL de cada página.
 - **Relatório final** com total de páginas visitadas, screenshots salvos e lista de erros.
@@ -87,6 +88,9 @@ Por padrão, o PySnapper salva os screenshots na pasta `screenshots/`, visita no
 | `--delay`               | Delay em segundos entre uma página e outra                            | `1.0`         |
 | `--width`               | Largura da viewport, em pixels                                        | `1366`        |
 | `--height`              | Altura da viewport, em pixels                                         | `768`         |
+| `--login`               | Habilita sessão autenticada com perfil persistente do Chromium: abre o navegador visível, carrega a URL e espera você confirmar/fazer login (ENTER no terminal) antes de seguir com o crawl | desativado    |
+| `--profile-dir`         | Pasta onde o perfil persistente do navegador (`--login`) é salvo      | `.browser-profile` |
+| `--relogin`             | Apaga o perfil salvo em `--profile-dir` e força um novo login manual  | desativado    |
 
 ### Exemplos
 
@@ -114,29 +118,47 @@ Ver o navegador em ação (útil para depuração) e seguir links para outros do
 python main.py https://meusite.com.br --no-headless --all-domains
 ```
 
+Rastrear um site que exige login, reaproveitando a sessão entre execuções:
+
+```bash
+python main.py https://meusite.com.br --login
+```
+
+O navegador abre visível na URL informada; confira se está logado (ou faça login ali mesmo) e pressione **ENTER** no terminal para seguir com o crawl. A sessão fica salva em `.browser-profile/`, então nas próximas execuções a página já carrega autenticada — o comportamento do comando é sempre o mesmo, não muda entre a primeira e as demais execuções.
+
+Forçar um novo login (por exemplo, quando a sessão expirou):
+
+```bash
+python main.py https://meusite.com.br --login --relogin
+```
+
 ## ⚙️ Como funciona
 
 1. A URL inicial entra em uma fila junto com sua profundidade (`0`).
-2. Enquanto houver itens na fila e o limite de páginas não tiver sido atingido, o PySnapper:
+2. Se `--login` for usado, o Chromium é iniciado com um perfil persistente (`--profile-dir`) e o navegador abre visível na URL inicial, aguardando você confirmar (ENTER) antes de continuar — assim a sessão de login é reaproveitada entre execuções.
+3. Enquanto houver itens na fila e o limite de páginas não tiver sido atingido, o PySnapper:
    - Remove a próxima URL da fila e verifica se já foi visitada ou se excede a profundidade máxima;
    - Carrega a página no Chromium e aguarda a rede ficar ociosa (`networkidle`);
    - (Opcional) Faz scroll incremental até o final da página para acionar lazy loading;
    - Tira o screenshot e salva com um nome de arquivo gerado a partir da URL;
    - Extrai todos os links `<a href>` da página e adiciona à fila os que ainda não foram visitados (respeitando a restrição de domínio, se ativa);
    - Aguarda o delay configurado antes de seguir para a próxima página.
-3. Ao final, exibe um resumo com o total de páginas visitadas, screenshots salvos e eventuais erros encontrados.
+4. Ao final, exibe um resumo com o total de páginas visitadas, screenshots salvos e eventuais erros encontrados.
 
 ## 🗃️ Estrutura do projeto
 
 ```
 PySnapper/
-├── main.py          # script principal (CLI + lógica de rastreamento)
-├── LICENSE          # licença MIT
-├── requirements.txt # dependências
+├── main.py              # script principal (CLI + lógica de rastreamento)
+├── .browser-profile/    # perfil persistente do navegador (criado ao usar --login; não versionar)
+├── LICENSE              # licença MIT
+├── requirements.txt     # dependências
 ├── .gitattributes
 ├── .gitignore
 └── README.md
 ```
+
+> 💡 Se você usar `--login`, adicione `.browser-profile/` (ou o nome que você passar em `--profile-dir`) ao `.gitignore` — essa pasta guarda cookies e dados de sessão e não deve ser versionada nem compartilhada.
 
 ## 🖼️ Saída
 
@@ -144,9 +166,9 @@ Os screenshots são salvos como arquivos `.png`, com nomes derivados do domínio
 
 ## ⚠️ Limitações e observações
 
-- Sites que exigem **login/autenticação** não são suportados nativamente.
 - O tempo de espera `networkidle` pode deixar o rastreamento mais lento em sites com conexões persistentes (WebSockets, analytics contínuo, etc.).
 - Sites muito grandes podem gerar um número elevado de páginas — ajuste `--max-pages` e `--depth` para controlar o escopo do rastreamento.
+- A pasta de perfil (`--profile-dir`) acumula cache e dados de navegação ao longo do tempo, e só pode ser usada por uma execução por vez (o Chromium bloqueia o diretório enquanto está aberto).
 - Respeite sempre o `robots.txt` e os termos de uso do site de destino antes de rastreá-lo.
 
 ## 🤝 Contribuindo
