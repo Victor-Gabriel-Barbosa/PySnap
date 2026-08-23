@@ -1,6 +1,6 @@
 <div align="center">
 
-# 📸 PySnap
+# 📸 PySnapper
 
 **Rastreie um site inteiro e capture screenshots de todas as páginas automaticamente.**
 
@@ -15,7 +15,7 @@
 
 ## 📖 Sobre o projeto
 
-**PySnap** é uma ferramenta de linha de comando escrita em Python que percorre (crawla) um site a partir de uma URL inicial e tira um **screenshot** de cada página que encontra pelo caminho, usando o [Playwright](https://playwright.dev/python/) para automatizar um navegador Chromium.
+**PySnapper** é uma ferramenta de linha de comando escrita em Python que percorre (crawla) um site a partir de uma URL inicial e tira um **screenshot** de cada página que encontra pelo caminho, usando o [Playwright](https://playwright.dev/python/) para automatizar um navegador Chromium.
 
 Ele funciona como um pequeno "robô de navegação": abre a página inicial, tira o print, extrai todos os links `<a href>` encontrados, coloca-os em uma fila e repete o processo — respeitando limites de profundidade, quantidade máxima de páginas e domínio — até esgotar a fila ou atingir o limite configurado.
 
@@ -49,8 +49,8 @@ Ele funciona como um pequeno "robô de navegação": abre a página inicial, tir
 Clone o repositório e instale as dependências:
 
 ```bash
-git clone https://github.com/Victor-Gabriel-Barbosa/PySnap.git
-cd PySnap
+git clone https://github.com/Victor-Gabriel-Barbosa/PySnapper.git
+cd PySnapper
 
 # (opcional, mas recomendado) crie um ambiente virtual
 python -m venv venv
@@ -71,7 +71,7 @@ Uso básico — informe apenas a URL inicial:
 python main.py https://exemplo.com
 ```
 
-Por padrão, o PySnap salva os screenshots na pasta `screenshots/`, visita no máximo 50 páginas, tira o print da página inteira e segue apenas links do mesmo domínio.
+Por padrão, o PySnapper salva os screenshots na pasta `screenshots/`, visita no máximo 50 páginas, tira o print da página inteira e segue apenas links do mesmo domínio.
 
 ### Opções disponíveis
 
@@ -117,7 +117,7 @@ python main.py https://meusite.com.br --no-headless --all-domains
 ## ⚙️ Como funciona
 
 1. A URL inicial entra em uma fila junto com sua profundidade (`0`).
-2. Enquanto houver itens na fila e o limite de páginas não tiver sido atingido, o PySnap:
+2. Enquanto houver itens na fila e o limite de páginas não tiver sido atingido, o PySnapper:
    - Remove a próxima URL da fila e verifica se já foi visitada ou se excede a profundidade máxima;
    - Carrega a página no Chromium e aguarda a rede ficar ociosa (`networkidle`);
    - (Opcional) Faz scroll incremental até o final da página para acionar lazy loading;
@@ -129,7 +129,7 @@ python main.py https://meusite.com.br --no-headless --all-domains
 ## 🗃️ Estrutura do projeto
 
 ```
-PySnap/
+PySnapper/
 ├── main.py          # script principal (CLI + lógica de rastreamento)
 ├── LICENSE          # licença MIT
 ├── requirements.txt # dependências
@@ -159,7 +159,7 @@ Contribuições são bem-vindas! Para contribuir:
 4. Envie para o seu fork (`git push origin minha-feature`);
 5. Abra um Pull Request descrevendo a mudança.
 
-Sinta-se à vontade também para abrir uma [issue](https://github.com/Victor-Gabriel-Barbosa/PySnap/issues) relatando bugs ou sugerindo melhorias.
+Sinta-se à vontade também para abrir uma [issue](https://github.com/Victor-Gabriel-Barbosa/PySnapper/issues) relatando bugs ou sugerindo melhorias.
 
 ## 📄 Licença
 
