@@ -158,8 +158,6 @@ PySnapper/
 └── README.md
 ```
 
-> 💡 Se você usar `--login`, adicione `.browser-profile/` (ou o nome que você passar em `--profile-dir`) ao `.gitignore` — essa pasta guarda cookies e dados de sessão e não deve ser versionada nem compartilhada.
-
 ## 🖼️ Saída
 
 Os screenshots são salvos como arquivos `.png`, com nomes derivados do domínio, caminho e query string da URL (por exemplo, `exemplo_com_sobre.png`). Ao final da execução, um resumo é impresso no terminal com o número de páginas visitadas, screenshots salvos com sucesso e a lista de páginas que falharam (com o respectivo erro).
