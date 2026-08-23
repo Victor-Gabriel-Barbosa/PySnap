@@ -23,16 +23,33 @@ Opções
   --scroll-to-bottom Faz scroll até o final da página antes do screenshot
   --delay            Delay em segundos entre uma página e outra (padrão: 1.0)
   --width / --height Dimensões da viewport (padrão: 1366x768)
+  --login            Habilita sessão autenticada usando um perfil persistente
+                      do Chromium (cookies, localStorage, IndexedDB etc).
+                      Sempre abre o navegador visível, carrega a URL e espera
+                      você pressionar ENTER no terminal antes de seguir com o
+                      crawl — o comportamento é o mesmo em toda execução,
+                      não só na primeira. O perfil salvo faz com que, se você
+                      já tiver logado antes, a página já apareça autenticada.
+  --profile-dir      Pasta onde o perfil persistente do navegador é salvo
+                      (padrão: .browser-profile)
+  --relogin          Apaga o perfil salvo e força um novo login manual
+                      (útil quando a sessão expirou)
 
 Exemplo
 -------
   python screenshot_site.py https://meusite.com.br -o prints -m 30 -d 2
+
+  # Com --login: sempre abre o navegador, espera você confirmar (ENTER) e
+  # então roda o crawl. Se você já tiver logado antes, a sessão salva no
+  # perfil já aparece pronta, mas o fluxo é sempre o mesmo.
+  python screenshot_site.py https://meusite.com.br --login
 """
 
 import argparse
 import asyncio
 import os
 import re
+import shutil
 from collections import deque
 from urllib.parse import urldefrag, urlparse
 
@@ -95,6 +112,8 @@ async def crawl_and_screenshot(
   delay: float = 1.0,
   viewport_width: int = 1366,
   viewport_height: int = 768,
+  login: bool = False,
+  profile_dir: str = ".browser-profile",
 ) -> None:
   os.makedirs(output_dir, exist_ok=True)
 
@@ -104,11 +123,37 @@ async def crawl_and_screenshot(
   saved = 0
 
   async with async_playwright() as p:
-    browser = await p.chromium.launch(headless=headless)
-    context = await browser.new_context(
-      viewport={"width": viewport_width, "height": viewport_height}
-    )
-    page = await context.new_page()
+    browser = None  # só é usado no modo sem --login (contexto "solto")
+
+    if login:
+      context = await p.chromium.launch_persistent_context(
+        profile_dir,
+        headless=False,
+        viewport={"width": viewport_width, "height": viewport_height},
+      )
+      page = context.pages[0] if context.pages else await context.new_page()
+
+      print("\n=== Modo de login ===")
+      print(f"Abrindo o navegador em: {start_url}")
+      print("Confira se está logado (ou faça o login agora, se precisar).")
+      print("Quando estiver pronto, volte para este terminal e pressione "
+            "ENTER para seguir com o crawl.\n")
+      try:
+        await page.goto(start_url, wait_until="networkidle", timeout=30000)
+      except Exception as e:
+        print(f"Aviso: não foi possível carregar {start_url} automaticamente: {e}")
+        print("Você ainda pode navegar manualmente até a página desejada.")
+
+      await asyncio.get_event_loop().run_in_executor(
+        None, input, "Pressione ENTER aqui para continuar... "
+      )
+      print(f"Perfil salvo em: {profile_dir}\n")
+    else:
+      browser = await p.chromium.launch(headless=headless)
+      context = await browser.new_context(
+        viewport={"width": viewport_width, "height": viewport_height}
+      )
+      page = await context.new_page()
 
     while queue and saved < max_pages:
       url, depth = queue.popleft()
@@ -164,7 +209,10 @@ async def crawl_and_screenshot(
 
       await asyncio.sleep(delay)
 
-    await browser.close()
+    if browser is not None:
+      await browser.close()
+    else:
+      await context.close()
 
   print("\n=== Resumo ===")
   print(f"Páginas visitadas: {len(visited)}")
@@ -212,8 +260,31 @@ def main() -> None:
   )
   parser.add_argument("--width", type=int, default=1366, help="Largura da viewport")
   parser.add_argument("--height", type=int, default=768, help="Altura da viewport")
+  parser.add_argument(
+    "--login",
+    action="store_true",
+    help=(
+      "Habilita sessão autenticada com perfil persistente do Chromium. "
+      "Sempre abre o navegador visível e espera você confirmar (ENTER) antes "
+      "de seguir com o crawl — mesmo comportamento em toda execução, não só "
+      "na primeira."
+    ),
+  )
+  parser.add_argument(
+    "--profile-dir",
+    default=".browser-profile",
+    help="Pasta onde o perfil persistente do navegador é salvo (padrão: .browser-profile)",
+  )
+  parser.add_argument(
+    "--relogin",
+    action="store_true",
+    help="Apaga o perfil salvo e força um novo login manual (ex: sessão expirada)",
+  )
 
   args = parser.parse_args()
+
+  if args.relogin and os.path.isdir(args.profile_dir):
+    shutil.rmtree(args.profile_dir)
 
   asyncio.run(
     crawl_and_screenshot(
@@ -228,6 +299,8 @@ def main() -> None:
       delay=args.delay,
       viewport_width=args.width,
       viewport_height=args.height,
+      login=args.login,
+      profile_dir=args.profile_dir,
     )
   )
 
